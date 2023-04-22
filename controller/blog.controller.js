@@ -3,7 +3,17 @@ const { elasticClient } = require("../config/elastic.config");
 const indexBlog = "blog"
 async function getAllBlogs(req, res, next){
     try {
-        
+        const value = req.params.value
+        const blogs = await elasticClient.search({
+            index: indexBlog,
+            q: value
+        });
+        return res.status(200).json({
+            statusCode: 200,
+            data: {
+                blogs: blogs.hits.hits
+            }
+        })
     } catch (error) {
         next(error)
     }
@@ -30,7 +40,21 @@ async function createNewBlogs(req, res, next){
 }
 async function removeBlogs(req, res, next){
     try {
-        
+        const {id} = req.params;
+        const deletedResualt = await elasticClient.deleteByQuery({
+            index: indexBlog,
+            query:{
+                match:{
+                    _id: id
+                }
+            }
+        })
+        return res.status(200).json({
+            statusCode: 200,
+            data: {
+                deletedResualt
+            }
+        })
     } catch (error) {
         next(error)
     }
