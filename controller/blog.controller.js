@@ -59,23 +59,148 @@ async function removeBlogs(req, res, next){
         next(error)
     }
 }
+async function updateBlog(req, res, next){
+    try {
+        const {id} = req.params;
+        const data = req.body;
+        Object.keys(data).forEach(key => {
+            if(!data[key]) delete data[key]
+        })
+        const blog = (await elasticClient.search({index : indexBlog , query: {match: {_id : id}}})).hits.hits?.[0] || {};
+        const payload = blog?._source || {}
+        const updateResualt = await elasticClient.index({
+            index: indexBlog,
+            id,
+            body: {...payload , ...data}
+        })
+
+        return res.status(200).json({
+            statusCode:200,
+            data:{
+                updateResualt   
+            }
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+async function updateBlog2(req, res, next){
+    try {
+        const {id} = req.params;
+        const data = req.body;
+        Object.keys(data).forEach(key => {
+            if(!data[key]) delete data[key]
+        })
+        const updateResualt = await elasticClient.update({
+            index: indexBlog,
+            id,
+            doc: data
+        })
+
+        return res.status(200).json({
+            statusCode:200,
+            data:{
+                updateResualt   
+            }
+        })
+    } catch (error) {
+        next(error)
+    }
+}
 async function searchByTitle(req, res, next){
     try {
-        
+        const {title} = req.query
+        const resualt = await elasticClient.search({
+            index: indexBlog,
+            query:{
+                match:{
+                    title
+                }
+            }
+        })
+        return res.status(200).json({
+            statusCode:200,
+            data:{
+                blog: resualt.hits.hits
+            }
+        })
     } catch (error) {
         next(error)
     }
 }
 async function searchByMultiFields(req, res, next){
     try {
-        
+        const {search} = req.query;
+        const resualt = await elasticClient.search({
+            index: indexBlog,
+            query:{
+                multi_match:{
+                    query: search,
+                    fields: ['auhtor' , 'text' , 'title']
+                }
+            }
+        })
+        const blog = resualt.hits.hits;
+        return res.status(200).json({
+            statusCode: 200,
+            data:{
+                blog
+            }
+        })
     } catch (error) {
         next(error)
     }
 }
 async function searchByRegexp(req, res, next){
     try {
-        
+        const {search} = req.query;
+        const resualt = await elasticClient.search({
+            index: indexBlog,
+            query:{
+                regexp:{
+                    title: `.*${search}.*`
+                }
+            }
+        })
+        const blog = resualt.hits.hits;
+        return res.status(200).json({
+            statusCode: 200,
+            data:{
+                blog
+            }
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+async function findBlogByMultiFields(req, res, next){
+    try {
+        const {search} = req.query;
+        const resualt = await elasticClient.search({
+            index: indexBlog,
+            query:{
+                bool:{
+                    should:[
+                        {
+                            regexp: {title : `.*${search}.*`}
+                        },
+                        {
+                            regexp: {text : `.*${search}.*`}
+                        },
+                        {
+                            regexp: {author : `.*${search}.*`}
+                        }
+                    ]
+                }
+            }
+        })
+        const blog = resualt.hits.hits;
+        return res.status(200).json({
+            statusCode: 200,
+            data:{
+                blog
+            }
+        })
     } catch (error) {
         next(error)
     }
@@ -87,5 +212,8 @@ module.exports = {
     removeBlogs,
     searchByTitle,
     searchByMultiFields,
-    searchByRegexp
+    searchByRegexp,
+    updateBlog,
+    updateBlog2,
+    findBlogByMultiFields
 }
